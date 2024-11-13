@@ -41,6 +41,7 @@ def get_all_districts(dtncode):
         FROM admin_layer.mh_district
         WHERE dtncode = %s
         GROUP BY dtncode, dtname
+        ORDER BY dtname
     """
     
     # Execute the query
@@ -94,9 +95,16 @@ def get_talukas(dtncode):
     
     # Define the SQL query to get unique taluka names and codes for the specified district
     query = """
-        SELECT DISTINCT dtname,dtncode, thname, thncode
+        SELECT dtname,dtncode, thname, thncode,
+        CONCAT(
+             ST_XMin(ST_Extent(geom)), ', ',
+             ST_YMin(ST_Extent(geom)), ', ',
+             ST_XMax(ST_Extent(geom)), ', ',
+             ST_YMax(ST_Extent(geom))
+            ) AS extent 
         FROM admin_layer.mh_village
         WHERE dtncode = %s
+        GROUP BY dtname,dtncode, thname, thncode
         ORDER BY thname
     """
     
@@ -133,9 +141,9 @@ def get_soil_data():
                bd_remark, awc_remark, depth_mclass, texture_mclass, soc_mclass, ph_mclass, p_mclass, n_mclass,
                k_mclass, cec_mclass, bd_mclass, awc_mclass
         FROM nbss.nbss_all_soil_data
-        WHERE (%s IS NULL OR dtncode = %s)
-          AND (%s IS NULL OR thncode = %s)
-          AND (%s IS NULL OR vincode = %s)
+         WHERE (%s IS NULL OR dtncode = %s)
+           AND (%s IS NULL OR thncode = %s)
+           AND (%s IS NULL OR vincode = %s)
     """
 
     # Execute the query with parameters, passing each twice due to SQL positional formatting
