@@ -73,6 +73,7 @@ def get_districts():
             ) AS extent 
         FROM admin_layer.mh_district
         GROUP BY dtncode, dtname
+        ORDER BY dtname
     """
     
     # Execute the query
@@ -86,7 +87,7 @@ def get_districts():
     # Return the result as JSON
     return jsonify(result)
 
-
+# taluka api for dropdown list
 @app.route('/get_talukas/<string:dtncode>', methods=['GET'])
 def get_talukas(dtncode):
     # Establish database connection
@@ -119,14 +120,103 @@ def get_talukas(dtncode):
     # Return the result as JSON
     return jsonify(result)
 
+# taluka api for Extent 
+@app.route('/get_talukas/<string:dtncode>/<string:thncode>', methods=['GET'])
+def get_talukas_ext(dtncode,thncode):
+    # Establish database connection
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)  # Use RealDictCursor to get results as dictionaries
+    
+    # Define the SQL query to get unique taluka names and codes for the specified district
+    query = """
+        SELECT dtname,dtncode, thname, thncode,
+        CONCAT(
+             ST_XMin(ST_Extent(geom)), ', ',
+             ST_YMin(ST_Extent(geom)), ', ',
+             ST_XMax(ST_Extent(geom)), ', ',
+             ST_YMax(ST_Extent(geom))
+            ) AS extent 
+        FROM admin_layer.mh_village
+        WHERE dtncode = %s AND thncode = %s
+        GROUP BY dtname,dtncode, thname, thncode
+        ORDER BY thname
+    """
+    
+    # Execute the query with the provided district name
+    cur.execute(query, (dtncode,thncode))
+    result = cur.fetchall()
+    
+    # Close the database connection
+    cur.close()
+    conn.close()
+    
+    # Return the result as JSON
+    return jsonify(result)
+
+# Village api for dropdown list
+@app.route('/get_villages/<string:dtncode>/<string:thncode>', methods=['GET'])
+def get_villages(dtncode, thncode):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    
+    query = """
+        SELECT DISTINCT dtname, dtncode, thname, thncode, vlname, vincode, 
+        CONCAT(
+             ST_XMin(ST_Extent(geom)), ', ',
+             ST_YMin(ST_Extent(geom)), ', ',
+             ST_XMax(ST_Extent(geom)), ', ',
+             ST_YMax(ST_Extent(geom))
+            ) AS extent
+        FROM admin_layer.mh_village
+        WHERE dtncode = %s AND thncode = %s
+        GROUP BY dtname, dtncode, thname, thncode, vlname, vincode
+        ORDER BY vlname
+    """
+    
+    cur.execute(query, (dtncode, thncode))
+    result = cur.fetchall()
+    
+    cur.close()
+    conn.close()
+    
+    return jsonify(result)
+
+# Village api for Extent
+@app.route('/get_villages/<string:dtncode>/<string:thncode>/<string:vincode>', methods=['GET'])
+def get_villages_ext(dtncode, thncode,vincode):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    
+    query = """
+        SELECT DISTINCT dtname, dtncode, thname, thncode, vlname, vincode, 
+        CONCAT(
+             ST_XMin(ST_Extent(geom)), ', ',
+             ST_YMin(ST_Extent(geom)), ', ',
+             ST_XMax(ST_Extent(geom)), ', ',
+             ST_YMax(ST_Extent(geom))
+            ) AS extent
+        FROM admin_layer.mh_village
+        WHERE dtncode = %s AND thncode = %s AND vincode = %s
+        GROUP BY dtname, dtncode, thname, thncode, vlname, vincode
+        ORDER BY vlname
+    """
+    
+    cur.execute(query, (dtncode, thncode,vincode))
+    result = cur.fetchall()
+    
+    cur.close()
+    conn.close()
+    
+    return jsonify(result)
 
 # Create NBSS Data api
 @app.route('/get_soil_data', methods=['GET'])
 def get_soil_data():
-    # Get query parameters for district, taluka, and village codes
-    dtncode = request.args.get('dtncode', type=int)
-    thncode = request.args.get('thncode', type=int)
-    vincode = request.args.get('vincode', type=int)
+    # Get query parameters for district, taluka, and village codes   
+    dtncode = request.args.get('dtncode', default=None, type=int)
+    thncode = request.args.get('thncode', default=None, type=int)
+    vincode = request.args.get('vincode', default=None, type=int)
+
 
     # Establish database connection
     conn = get_db_connection()
@@ -155,26 +245,6 @@ def get_soil_data():
     conn.close()
 
     # Return the result as JSON
-    return jsonify(result)
-
-@app.route('/get_villages/<string:dtncode>/<string:thncode>', methods=['GET'])
-def get_villages(dtncode, thncode):
-    conn = get_db_connection()
-    cur = conn.cursor(cursor_factory=RealDictCursor)
-    
-    query = """
-        SELECT DISTINCT dtname, dtncode, thname, thncode, vlname, vincode 
-        FROM admin_layer.mh_village
-        WHERE dtncode = %s AND thncode = %s
-        ORDER BY vlname
-    """
-    
-    cur.execute(query, (dtncode, thncode))
-    result = cur.fetchall()
-    
-    cur.close()
-    conn.close()
-    
     return jsonify(result)
 
 
