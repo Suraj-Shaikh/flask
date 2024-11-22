@@ -229,7 +229,7 @@ def get_soil_data():
                bd_class, awc_class, depth_id, texture_id, soc_id, ph_id, p_id, n_id, k_id, cec_id, bd_id, awc_id,
                depth_remark, texture_remark, soc_remark, ph_remark, p_remark, n_remark, k_remark, cec_remark,
                bd_remark, awc_remark, depth_mclass, texture_mclass, soc_mclass, ph_mclass, p_mclass, n_mclass,
-               k_mclass, cec_mclass, bd_mclass, awc_mclass
+               k_mclass, cec_mclass, bd_mclass, awc_mclass,awc_mclass, soc_color, sd_color,texture_color,awc_color
         FROM nbss.nbss_all_soil_data
          WHERE (%s IS NULL OR dtncode = %s)
            AND (%s IS NULL OR thncode = %s)
