@@ -247,51 +247,126 @@ def get_soil_data():
     # Return the result as JSON
     return jsonify(result)
 
-# API route to fetch soil data dynamically
-@app.route('/api/soil-data', methods=['GET'])
-def get_nbsssoil_data():
-    try:
-        # Extract query parameters
-        level = request.args.get('level', type=str)  # 'village', 'taluka', or 'district'
-        id_value = request.args.get('id_value', type=int)
-        raster_name = request.args.get('raster_name', type=str)
-        
-        # Validate input
-        if not level or not id_value or not raster_name:
-            return jsonify({"error": "Missing required parameters: level, id_value, and raster_name"}), 400
-        
-        # Map levels to functions
-        level_to_function = {
-            "village": "nbss.villagesoildata",
-            "taluka": "nbss.talukasoildata",
-            "district": "nbss.districtsoildata"
-        }
-        
-        function_name = level_to_function.get(level.lower())
-        
-        if not function_name:
-            return jsonify({"error": "Invalid level parameter. Use 'village', 'taluka', or 'district'."}), 400
-        
-        # Connect to the database
-        connection = get_db_connection()
-        cursor = connection.cursor(cursor_factory=RealDictCursor)
-        
-        # Execute the function
-        query = f"SELECT * FROM {function_name}(%s, %s)"
-        cursor.execute(query, (id_value, raster_name))
-        
-        # Fetch results
-        results = cursor.fetchall()
-        
-        # Close the database connection
-        cursor.close()
-        connection.close()
-        
-        # Return the results as JSON
-        return jsonify(results)
-    
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+
+# Create API for District other soil parameters 
+@app.route('/get_dist_other_soil_parameters', methods=['GET'])
+def get_dist_other_soil_parameters():
+    # Get query parameters for district, taluka, and village codes   
+    dtncode = request.args.get('dtncode', default=None, type=int)
+    phase = request.args.get('phase', default=None, type=int)
+
+
+    # Establish database connection
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)  # Use RealDictCursor to get results as dictionaries
+
+    # Define the SQL query with optional filters
+    query = """
+        SELECT dtncode, dtname, 
+                MIN(min_n) as min_n, MAX(max_n) as max_n, 
+                MIN(min_p) as min_p, MAX(max_p) as max_p, 
+                MIN(min_k)as min_k, MAX(max_k) as max_k, 
+                MIN(min_ph)as min_ph, MAX(max_ph) as max_ph,
+                MIN(min_ec)as min_ec, MAX(max_ec) as max_ec, 
+                MIN(min_bd)as min_bd, MAX(max_bd) as max_bd
+        FROM nbss.village_soil_para_max_min
+         WHERE (%s IS NULL OR dtncode = %s)
+           AND (%s IS NULL OR phase = %s)
+           GROUP BY dtncode, dtname
+    """
+
+    # Execute the query with parameters, passing each twice due to SQL positional formatting
+    cur.execute(query, (dtncode, dtncode,phase,phase))
+    result = cur.fetchall() 
+
+    # Close the database connection
+    cur.close()
+    conn.close()
+
+    # Return the result as JSON
+    return jsonify(result)
+
+# Create API for Taluka other soil parameters 
+@app.route('/get_tal_other_soil_parameters', methods=['GET'])
+def get_tal_other_soil_parameters():
+    # Get query parameters for district, taluka, and village codes   
+    dtncode = request.args.get('dtncode', default=None, type=int)
+    thncode = request.args.get('thncode', default=None, type=int)
+    phase = request.args.get('phase', default=None, type=int)
+
+
+    # Establish database connection
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)  # Use RealDictCursor to get results as dictionaries
+
+    # Define the SQL query with optional filters
+    query = """
+        SELECT dtncode, dtname, thncode, thname,
+                MIN(min_n) as min_n, MAX(max_n) as max_n, 
+                MIN(min_p) as min_p, MAX(max_p) as max_p, 
+                MIN(min_k)as min_k, MAX(max_k) as max_k, 
+                MIN(min_ph)as min_ph, MAX(max_ph) as max_ph,
+                MIN(min_ec)as min_ec, MAX(max_ec) as max_ec, 
+                MIN(min_bd)as min_bd, MAX(max_bd) as max_bd
+        FROM nbss.village_soil_para_max_min
+         WHERE (%s IS NULL OR dtncode = %s)
+              AND (%s IS NULL OR thncode = %s)
+              AND (%s IS NULL OR phase = %s)
+              GROUP BY dtncode, dtname, thncode, thname
+    """
+
+    # Execute the query with parameters, passing each twice due to SQL positional formatting
+    cur.execute(query, (dtncode, dtncode, thncode, thncode, phase,phase))
+    result = cur.fetchall() 
+
+    # Close the database connection
+    cur.close()
+    conn.close()
+
+    # Return the result as JSON
+    return jsonify(result)
+
+# Create API for Village other soil parameters 
+@app.route('/get_vill_other_soil_parameters', methods=['GET'])
+def get_vill_other_soil_parameters():
+    # Get query parameters for district, taluka, and village codes   
+    dtncode = request.args.get('dtncode', default=None, type=int)
+    thncode = request.args.get('thncode', default=None, type=int)
+    vincode = request.args.get('vincode', default=None, type=int)
+    phase = request.args.get('phase', default=None, type=int)
+
+
+    # Establish database connection
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)  # Use RealDictCursor to get results as dictionaries
+
+    # Define the SQL query with optional filters
+    query = """
+        SELECT dtncode, dtname, thncode, thname,vincode, vlname, 
+                MIN(min_n) as min_n, MAX(max_n) as max_n, 
+                MIN(min_p) as min_p, MAX(max_p) as max_p, 
+                MIN(min_k)as min_k, MAX(max_k) as max_k, 
+                MIN(min_ph)as min_ph, MAX(max_ph) as max_ph,
+                MIN(min_ec)as min_ec, MAX(max_ec) as max_ec, 
+                MIN(min_bd)as min_bd, MAX(max_bd) as max_bd
+        FROM nbss.village_soil_para_max_min
+         WHERE (%s IS NULL OR dtncode = %s)
+              AND (%s IS NULL OR thncode = %s)
+              AND (%s IS NULL OR vincode = %s)
+              AND (%s IS NULL OR phase = %s)
+              GROUP BY dtncode, dtname, thncode, thname,vincode, vlname
+    """
+
+    # Execute the query with parameters, passing each twice due to SQL positional formatting
+    cur.execute(query, (dtncode, dtncode, thncode, thncode,vincode, vincode, phase,phase))
+    result = cur.fetchall() 
+
+    # Close the database connection
+    cur.close()
+    conn.close()
+
+    # Return the result as JSON
+    return jsonify(result)
 
 
 if __name__ == '__main__':
