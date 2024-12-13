@@ -31,7 +31,7 @@ def get_all_districts(dtncode):
     
     # Define the SQL query to get unique district names
     query = """
-         SELECT dtncode, dtname,
+         SELECT dtncode, dtname,dtmname,is_pocra,
          CONCAT(
              ST_XMin(ST_Extent(geom)), ', ',
              ST_YMin(ST_Extent(geom)), ', ',
@@ -40,7 +40,7 @@ def get_all_districts(dtncode):
             ) AS extent 
         FROM admin_layer.mh_district
         WHERE dtncode = %s
-        GROUP BY dtncode, dtname
+        GROUP BY dtncode, dtname,dtmname,is_pocra
         ORDER BY dtname
     """
     
@@ -64,7 +64,7 @@ def get_districts():
     
     # Define the SQL query to get unique district names
     query = """
-         SELECT dtncode, dtname,
+         SELECT dtncode, dtname,dtmname,is_pocra,
          CONCAT(
              ST_XMin(ST_Extent(geom)), ', ',
              ST_YMin(ST_Extent(geom)), ', ',
@@ -72,7 +72,7 @@ def get_districts():
              ST_YMax(ST_Extent(geom))
             ) AS extent 
         FROM admin_layer.mh_district
-        GROUP BY dtncode, dtname
+        GROUP BY dtncode, dtname,dtmname,is_pocra
         ORDER BY dtname
     """
     
@@ -96,7 +96,7 @@ def get_talukas(dtncode):
     
     # Define the SQL query to get unique taluka names and codes for the specified district
     query = """
-        SELECT dtname,dtncode, thname, thncode,
+        SELECT dtname,dtncode, thname, thncode,thmname,
         CONCAT(
              ST_XMin(ST_Extent(geom)), ', ',
              ST_YMin(ST_Extent(geom)), ', ',
@@ -105,7 +105,7 @@ def get_talukas(dtncode):
             ) AS extent 
         FROM admin_layer.mh_village
         WHERE dtncode = %s
-        GROUP BY dtname,dtncode, thname, thncode
+        GROUP BY dtname,dtncode, thname, thncode,thmname
         ORDER BY thname
     """
     
@@ -129,7 +129,7 @@ def get_talukas_ext(dtncode,thncode):
     
     # Define the SQL query to get unique taluka names and codes for the specified district
     query = """
-        SELECT dtname,dtncode, thname, thncode,
+        SELECT dtname,dtncode, thname, thncode,thmname,
         CONCAT(
              ST_XMin(ST_Extent(geom)), ', ',
              ST_YMin(ST_Extent(geom)), ', ',
@@ -138,7 +138,7 @@ def get_talukas_ext(dtncode,thncode):
             ) AS extent 
         FROM admin_layer.mh_village
         WHERE dtncode = %s AND thncode = %s
-        GROUP BY dtname,dtncode, thname, thncode
+        GROUP BY dtname,dtncode, thname, thncode,thmname
         ORDER BY thname
     """
     
@@ -160,7 +160,7 @@ def get_villages(dtncode, thncode):
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     query = """
-        SELECT DISTINCT dtname, dtncode, thname, thncode, vlname, vincode, 
+        SELECT DISTINCT dtname, dtncode, thname, thncode, vlname,vilmname, vincode, 
         CONCAT(
              ST_XMin(ST_Extent(geom)), ', ',
              ST_YMin(ST_Extent(geom)), ', ',
@@ -169,7 +169,7 @@ def get_villages(dtncode, thncode):
             ) AS extent
         FROM admin_layer.mh_village
         WHERE dtncode = %s AND thncode = %s
-        GROUP BY dtname, dtncode, thname, thncode, vlname, vincode
+        GROUP BY dtname, dtncode, thname, thncode, vlname,vilmname, vincode
         ORDER BY vlname
     """
     
@@ -246,6 +246,52 @@ def get_soil_data():
 
     # Return the result as JSON
     return jsonify(result)
+
+# API route to fetch soil data dynamically
+@app.route('/api/soil-data', methods=['GET'])
+def get_nbsssoil_data():
+    try:
+        # Extract query parameters
+        level = request.args.get('level', type=str)  # 'village', 'taluka', or 'district'
+        id_value = request.args.get('id_value', type=int)
+        raster_name = request.args.get('raster_name', type=str)
+        
+        # Validate input
+        if not level or not id_value or not raster_name:
+            return jsonify({"error": "Missing required parameters: level, id_value, and raster_name"}), 400
+        
+        # Map levels to functions
+        level_to_function = {
+            "village": "nbss.villagesoildata",
+            "taluka": "nbss.talukasoildata",
+            "district": "nbss.districtsoildata"
+        }
+        
+        function_name = level_to_function.get(level.lower())
+        
+        if not function_name:
+            return jsonify({"error": "Invalid level parameter. Use 'village', 'taluka', or 'district'."}), 400
+        
+        # Connect to the database
+        connection = get_db_connection()
+        cursor = connection.cursor(cursor_factory=RealDictCursor)
+        
+        # Execute the function
+        query = f"SELECT * FROM {function_name}(%s, %s)"
+        cursor.execute(query, (id_value, raster_name))
+        
+        # Fetch results
+        results = cursor.fetchall()
+        
+        # Close the database connection
+        cursor.close()
+        connection.close()
+        
+        # Return the results as JSON
+        return jsonify(results)
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == '__main__':
